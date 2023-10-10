@@ -24,6 +24,14 @@
 </head>
 
 <body>
+    <div id="loadingScreen">
+        <div>
+            <div class="spinner"></div>
+            <p>Loading CWPP Database...</p>
+        </div>
+    </div>
+
+
     <div id="FullPage">
         <div id="title">
             <div id="image-placeholderLeft">
@@ -45,12 +53,14 @@
                 <label for="jurisdiction" title="Enter the type of jurisdiction that the plan covers">Jurisdiction
                     Level:</label><br>
                 <select id="jurisdiction" name="jurisdiction">
+                    <option value="" disabled selected hidden>Select a Jurisdiction</option>
                     <option value="Fire Protection District">Fire Protection District</option>
                     <option value="Community">Community</option>
                     <option value="County">County</option>
                 </select><br>
                 <label for="state" title="Enter the state that the plan falls within">State:</label><br>
                 <select id="state" name="state">
+                    <option value="" disabled selected hidden>Select a State</option>
                     <option value="AL">Alabama</option>
                     <option value="AK">Alaska</option>
                     <option value="AZ">Arizona</option>
@@ -113,7 +123,7 @@
                 <label for="contact_email" title="Enter a good email address to contact you at">Contact
                     Email:</label><br>
                 <input type="text" id="contact_email" name="contact_email"><br>
-                <label for="documentUpload">Upload Document (PDF/Word):</label><br>
+                <label for="documentUpload">Upload CWPP PDF:</label><br>
                 <input type="file" id="documentUpload" name="file" accept=".pdf, .doc, .docx">
                 <input type="hidden" id="geometry" name="geometry"><br>
                 <button type="button" id="add-geometry">Add Geometry</button><br>
@@ -122,6 +132,7 @@
             </form>
         </div>
         <div id="boundary-action-pane" title="Boundary Action">
+            <span class="close-button">x</span>
             <p>Choose your desired action:</p>
             <button id="btn-edit-boundary">I want to edit the plan boundary on my map</button>
             <button id="btn-add-boundary">I want to add a new plan boundary to my map</button>

@@ -1,4 +1,6 @@
 $(document).ready(function () {
+    $("#loadingScreen").show();
+
     var map = L.map('map').setView([39.5501, -105.7821], 4);
     var drawnItems = new L.FeatureGroup();
     var drawnGeometry = null;
@@ -26,7 +28,7 @@ $(document).ready(function () {
     }
 
     var drawControl = new L.Control.Draw({
-        position: 'topleft',
+        position: 'bottomleft',
         draw: {
             polyline: false,
             circle: false,
@@ -127,8 +129,6 @@ $(document).ready(function () {
             }
         })
             .then(function (response) {
-                // Log the full response to the console
-                console.log("Data received from the endpoint:", response.data);
 
                 var features = response.data.features;
 
@@ -332,6 +332,8 @@ $(document).ready(function () {
             "geometry": drawnGeometry || { "type": "Polygon", "coordinates": [[[-107.578125, 57.987308], [-98.964838, 55.780551], [-95.537104, 52.220838], [-102.919922, 48.175622], [-106.259766, 45.162946], [-106.523437, 27.638225], [-102.744141, 27.326426], [-103.359375, 44.861906], [-100.546875, 46.940484], [-92.373042, 52.123268], [-95.712891, 56.476372], [-106.699219, 59.188044], [-107.578125, 57.987308]]] }
         };
 
+        console.log('Drawn Geometry:', drawnGeometry);
+
         console.log(JSON.stringify(newFeature));
 
         const formData = new FormData();
@@ -340,12 +342,73 @@ $(document).ready(function () {
 
         axios.post('/api/data', formData)
             .then(function (response) {
-                console.log(response.data);
                 $("#add-feature-dialog").dialog("close");
+
+                // Clear edited geometries and reset map zoom/position
+                console.log('Post Submission Drawn Geometry:', drawnGeometry);
+                //map.removeLayer(drawnGeometry);
+                map.removeLayer(drawnItems);
+                map.removeLayer(highlightedPolygon);
+                map.removeLayer(editableLayers);
+                //map.removeControl(layer);
+                applyFilters(null);
+                console.log(response.data);
             })
             .catch(function (error) {
                 console.log(error);
             });
+    });
+
+    function resetDropdown(dropdownElement) {
+        // Clear the dropdown
+        while (dropdownElement.firstChild) {
+            dropdownElement.removeChild(dropdownElement.firstChild);
+        }
+        // Add a placeholder option
+        var option = new Option("", "", true, true);
+        option.setAttribute("disabled", "disabled");
+        option.setAttribute("hidden", "hidden");
+        dropdownElement.append(option);
+    }
+
+
+    $(document).on('click', 'button[title="Close"]', function () {
+
+        // Clear the map layers
+        map.removeLayer(drawnItems);
+        map.removeLayer(highlightedPolygon);
+        map.removeLayer(editableLayers);
+        applyFilters(null);
+
+        // Clear the form fields
+        $('#add-feature-form')[0].reset();
+        $('#jurisdiction').val('');
+        $('#state').val('');
+        $('#county').val('');
+        $('#community').val('');
+        // Reset dropdowns
+        resetDropdown(document.getElementById("county"));
+        resetDropdown(document.getElementById("community"));
+        $('#community').hide();
+        $('#community-label').hide();
+
+        // If you have a draw control and an edit control instance available, 
+        // disable any active draw/edit actions and remove them from the map.
+        if (drawControl) {
+            map.removeControl(drawControl);
+        }
+        if (editControl) {
+            map.removeControl(editControl);
+        }
+        if (drawControlActive) {
+            drawControlActive = false;
+        }
+        if (editableLayers) {
+            editableLayers.clearLayers();
+        }
+        if (editHandler && editHandler.enabled()) {
+            editHandler.disable();
+        }
     });
 
     var AddFeatureControl = L.Control.extend({
@@ -362,7 +425,7 @@ $(document).ready(function () {
 
             var icon = L.DomUtil.create('ion-icon', '', link);
             icon.setAttribute('name', 'create-outline');
-            icon.style.fontSize = '18px';
+            icon.style.fontSize = '26px';
             icon.style.padding = '6px';
 
             link.onclick = function (e) {
@@ -393,6 +456,65 @@ $(document).ready(function () {
         }
     });
 
+    // Array to store the original polygons
+    var originalMultipolygon = [];
+
+    // Array to store all edited polygons
+    var editedPolygons = [];
+
+    var originalPolygonIdMap = {};
+    var editablePolygonIdMap = {};
+
+
+    // Generate a unique ID for polygons
+    function generateUniqueId() {
+        return Math.random().toString(36).substr(2, 9);
+    }
+
+    function captureOriginalState() {
+        originalMultipolygon = [];
+        let counter = 0;  // Add a counter to differentiate the layers.
+        highlightedPolygon.eachLayer(function (layer) {
+            layer._latlngs.forEach(function (latlngArray) {
+                let coords = latlngArray.map(latLng => [latLng.lng, latLng.lat]);
+                let geoJson = {
+                    type: 'Polygon',
+                    coordinates: [coords]
+                };
+                let customId = generateUniqueId() + '-' + counter; // Append the counter to the generated ID.
+                geoJson._customId = customId;
+                originalPolygonIdMap[counter] = customId;  // Use the counter as the key instead of layer._leaflet_id.
+                originalMultipolygon.push(geoJson);
+                counter++;  // Increment the counter.
+            });
+        });
+    }
+
+    map.on(L.Draw.Event.EDITED, function (event) {
+        var layers = event.layers;
+
+        editedPolygons = [];
+        layers.eachLayer(function (layer) {
+            let geoJson = layer.toGeoJSON().geometry;
+            geoJson._customId = editablePolygonIdMap[layer._leaflet_id];
+            editedPolygons.push(geoJson);
+        });
+
+        editedPolygons.forEach(editedPolygon => {
+            const matchedIndex = originalMultipolygon.findIndex(op => op._customId === editedPolygon._customId);
+            if (matchedIndex !== -1) {
+                originalMultipolygon[matchedIndex] = editedPolygon;
+            } else {
+            }
+        });
+
+        // Now, construct the final MultiPolygon using the originalMultipolygon
+        drawnGeometry = {
+            type: "MultiPolygon",
+            coordinates: originalMultipolygon.map(p => p.coordinates)
+        };
+    });
+
     var editableLayers = L.featureGroup().addTo(map);
 
     var editControl = new L.Control.Draw({
@@ -404,64 +526,57 @@ $(document).ready(function () {
         }
     });
 
+    // Close button logic for boundary-action-pane
+    $('#boundary-action-pane .close-button').click(function () {
+        $('#boundary-action-pane').hide();
+    });
+
     $('#add-custom-polygon').on('click', function (e) {
         e.preventDefault();
         $('#boundary-action-pane').css('display', 'block');
     });
 
     function editPolygon() {
+        captureOriginalState();
         if (!drawControlActive) {
             map.addControl(editControl);
             drawControlActive = true;
 
-            if (highlightedPolygon) {
-                var geometryData = highlightedPolygon.toGeoJSON();
-                var simplifiedGeoJSON = turf.simplify(geometryData, { tolerance: 0.005, highQuality: false });
+            let counter = 0;  // Start a counter for each layer.
+            Object.keys(highlightedPolygon._layers).forEach(function (layerKey) {
+                var layer = highlightedPolygon._layers[layerKey];
 
-                map.removeLayer(highlightedPolygon);
-                editableLayers.removeLayer(highlightedPolygon);
-
-                highlightedPolygon = L.geoJSON(simplifiedGeoJSON, {
-                    style: {
+                layer._latlngs.forEach(function (latlngArray) {
+                    var polygon = L.polygon(latlngArray, {
                         fillColor: '#f00',
                         fillOpacity: .2,
                         opacity: 1,
                         color: '#000',
                         weight: 2
-                    }
-                }).addTo(map);
+                    }).addTo(map);
 
-                // Check if highlightedPolygon is a FeatureGroup or GeoJSON and dive into its layers if needed
-                if (highlightedPolygon instanceof L.LayerGroup || highlightedPolygon instanceof L.GeoJSON) {
-                    highlightedPolygon.eachLayer(function (layer) {
-                        // Add each individual layer to editableLayers
-                        editableLayers.addLayer(layer);
-                    });
-                } else {
-                    // If highlightedPolygon is not a LayerGroup or GeoJSON, add it directly to editableLayers
-                    editableLayers.addLayer(highlightedPolygon);
-                }
+                    polygon._customId = originalPolygonIdMap[counter];  // Retrieve the ID using the counter.
+                    editablePolygonIdMap[polygon._leaflet_id] = originalPolygonIdMap[counter];
+                    editableLayers.addLayer(polygon);
 
-                // Loop through editableLayers to enable editing
-                editableLayers.eachLayer(function (layer) {
-                    if (layer && layer.editing) {
-                        layer.editing.enable();
+                    // Remove the existing highlightedPolygon from the map
+                    map.removeLayer(highlightedPolygon);
+                    if (polygon.editing) {
+                        polygon.editing.enable();
                     } else {
-                        console.warn("Unable to enable editing for layer:", layer);
+                        console.warn("Unable to enable editing for polygon:", polygon);
                     }
                 });
-
-                console.log($(".leaflet-draw-edit-edit").length);
-
-                setTimeout(function () {
-                    if (editControl._toolbars.edit) {
-                        editControl._toolbars.edit._modes.edit.handler.enable();
-                    }
-                    drawControlActive = true;
-                }, 200);
+                counter++;
+            });
 
 
-            }
+            setTimeout(function () {
+                if (editControl._toolbars.edit) {
+                    editControl._toolbars.edit._modes.edit.handler.enable();
+                }
+                drawControlActive = true;
+            }, 200);
         } else {
             editableLayers.eachLayer(function (layer) {
                 if (layer && layer.editing) {
@@ -472,6 +587,7 @@ $(document).ready(function () {
             drawControlActive = false;
         }
     }
+
 
     $('#btn-edit-boundary').on('click', function () {
         editPolygon();
@@ -520,6 +636,7 @@ $(document).ready(function () {
         addPolygon();
         $('#boundary-action-pane').css('display', 'none');
     });
+
 
     $("#open-add-feature-dialog").on("click", function () {
         $("#add-feature-dialog").dialog("open");
@@ -605,7 +722,6 @@ $(document).ready(function () {
                             fillColor: '#0000ff', // Blue color to indicate a feature selected for editing
                             fillOpacity: 0.6
                         });
-                        console.log("Feature selected for editing:", feature);
                         return; // Exit early to avoid executing the popup logic
                     }
 
@@ -642,7 +758,15 @@ $(document).ready(function () {
                 attribution: 'Map data © <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
             });
 
-            streets.addTo(map); // default layer
+            var lightGray = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/light-v10/tiles/{z}/{x}/{y}?access_token=${token}`, {
+                maxZoom: 19,
+                tileSize: 512,
+                zoomOffset: -1,
+                attribution: 'Map data © <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+            });
+
+
+            lightGray.addTo(map); // default layer
 
             var LayerSwitcherControl = L.Control.extend({
                 options: {
@@ -657,24 +781,32 @@ $(document).ready(function () {
 
                     var icon = L.DomUtil.create('ion-icon', '', link);
                     icon.setAttribute('name', 'grid-outline');
-                    icon.style.fontSize = '18px';
+                    icon.style.fontSize = '26px';
                     icon.style.padding = '6px';
 
                     var layersDiv = L.DomUtil.create('div', 'layers-content', container);
                     layersDiv.style.display = 'none';
 
-                    var createLayerButton = function (name, layer) {
+                    var createLayerButton = function (name, layer, imageUrl) {
                         var button = L.DomUtil.create('button', '', layersDiv);
                         button.innerHTML = name;
+
+                        var img = L.DomUtil.create('img', '', button);
+                        img.src = imageUrl; // Set the image source
+
                         button.onclick = function () {
                             map.removeLayer(streets);
                             map.removeLayer(satellite);
+                            map.removeLayer(lightGray);
                             map.addLayer(layer);
                         };
                     };
 
-                    createLayerButton('Streets', streets);
-                    createLayerButton('Satellite', satellite);
+
+                    createLayerButton('Streets', streets, 'https://miro.medium.com/v2/resize:fit:1400/0*yPSQlTHRvLaIVBcG.jpg');
+                    createLayerButton('Satellite', satellite, 'https://miro.medium.com/v2/resize:fit:900/0*si0GnRAqoAwGL5GD.jpg');
+                    createLayerButton('Light Gray', lightGray, 'https://miro.medium.com/v2/resize:fit:1024/0*QqAUvTurSNIloa1a.jpg');
+
 
                     link.onclick = function () {
                         layersDiv.style.display = (layersDiv.style.display === 'none' ? 'block' : 'none');
@@ -704,6 +836,7 @@ $(document).ready(function () {
             }
         }).addTo(map);
         allFeatures = response.data;
+        $("#loadingScreen").hide();
     });
 
 
@@ -714,7 +847,9 @@ $(document).ready(function () {
                     'rgba(255, 237, 160, 0.4)';
     }
 
-    // Add a hosted feature layer to the map
+    // UPDATE UPDATE
+
+    /* // Add a hosted feature layer to the map
     var currentIncidents = L.esri.featureLayer({
         url: 'https://services9.arcgis.com/RHVPKKiFTONKtxq3/ArcGIS/rest/services/USA_Wildfires_v1/FeatureServer/0'
     })
@@ -783,7 +918,7 @@ $(document).ready(function () {
 
             var icon = L.DomUtil.create('ion-icon', '', link);
             icon.setAttribute('name', 'layers-outline');
-            icon.style.fontSize = '18px';
+            icon.style.fontSize = '26px';
             icon.style.padding = '6px';
 
             // The actual layer list, initially hidden
@@ -834,11 +969,11 @@ $(document).ready(function () {
         }
     });
 
-    map.addControl(new LayerControl());
+    map.addControl(new LayerControl()); */
 
     var CollapsibleLegendControl = L.Control.extend({
         options: {
-            position: 'topleft'
+            position: 'topright'
         },
 
         onAdd: function (map) {
@@ -850,7 +985,7 @@ $(document).ready(function () {
 
             var icon = L.DomUtil.create('ion-icon', '', link);
             icon.setAttribute('name', 'book-outline');  // Change the icon to something that signifies a legend. For this example, I used 'book-outline'
-            icon.style.fontSize = '18px';
+            icon.style.fontSize = '26px';
             icon.style.padding = '6px';
 
             var legendDiv = L.DomUtil.create('div', 'legend-content', container);
@@ -928,7 +1063,7 @@ $(document).ready(function () {
 
             var icon = L.DomUtil.create('ion-icon', '', link);
             icon.setAttribute('name', 'filter-outline');
-            icon.style.fontSize = '18px';
+            icon.style.fontSize = '26px';
             icon.style.padding = '6px';
 
             var filterDiv = L.DomUtil.create('div', 'filter-content', container);
@@ -989,7 +1124,9 @@ $(document).ready(function () {
 
     map.addControl(new CollapsibleFilterControl());
 
-    // Global variable declarations for the buttons
+    // UPDATE UPDATE
+
+    /* // Global variable declarations for the buttons
     var tutorialButton;
     var contactButton;
 
@@ -1007,7 +1144,7 @@ $(document).ready(function () {
 
             var icon = L.DomUtil.create('ion-icon', '', link);
             icon.setAttribute('name', 'help-outline');
-            icon.style.fontSize = '18px';
+            icon.style.fontSize = '26px';
             icon.style.padding = '6px';
 
             var helpDiv = L.DomUtil.create('div', 'help-content', container);
@@ -1113,6 +1250,7 @@ $(document).ready(function () {
                          <button>Submit</button>`;
 
     async function submitContactForm() {
+        console.log("Submitting contact form...");
         // Gather form data...
         const email = contactForm.querySelector('input[type="email"]').value;
         const subject = contactForm.querySelector('input[type="text"]').value;
@@ -1156,7 +1294,9 @@ $(document).ready(function () {
     };
     contactForm.appendChild(contactCloseButton);
 
-    document.body.appendChild(contactForm);
+    document.body.appendChild(contactForm); */
 
     L.control.scale().addTo(map);
+
 });
+

@@ -197,6 +197,12 @@ app.post('/api/data', upload.single('file'), async (req, res) => {
         const contact_email_use = result.rows[0].contact_email;
         const name_use = result.rows[0].name;
 
+        // Check if the insert was successful
+        if (result.rowCount === 0) {
+            console.error('Failed to insert data into cwpp_unconfirmed.');
+            return res.status(500).send('Failed to add feature to database.');
+        }
+
         const lambdaParams = {
             FunctionName: 'emailerFunction',
             Payload: JSON.stringify({ uid: uid, contact_email_use: contact_email_use, name_use: name_use })

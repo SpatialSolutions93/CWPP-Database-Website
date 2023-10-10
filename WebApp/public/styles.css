@@ -182,7 +182,7 @@ body {
 }
 
 #add-feature-dialog {
-    position: absolute;
+    position: sticky;
     background-color: #ffffff;
     border: 1px solid #000000;
     border-radius: 5px;
@@ -341,4 +341,505 @@ body {
 
 .close-button:hover {
     background-color: #ddd;
+}
+
+.leaflet-control-zoom a,
+.leaflet-control-custom a {
+    background-color: #333;
+    border: 0px solid #222;
+    color: #000;
+    display: block;
+    padding: 5px 10px;
+    margin: 2px;
+    border-radius: 2px;
+    text-align: center;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+}
+
+.leaflet-control-zoom a:hover,
+.leaflet-control-custom a:hover {
+    background-color: #555;
+    color: #666;
+}
+
+.leaflet-control-custom .md.hydrated {
+    font-size: 24px;
+    padding: 0;
+    margin: 0;
+    color: #000;
+    /* setting icon color to black */
+}
+
+/* Adding a hover effect for the icon */
+.leaflet-control-custom a:hover .md.hydrated {
+    color: #666;
+    /* making it lighter on hover */
+}
+
+.legend-content i {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    margin-right: 5px;
+    border: 1px solid #aaa;
+    /* a bit lighter to stand out against the darker background */
+}
+
+.legend-content {
+    padding: 10px;
+    background-color: #444;
+    border: 1px solid #444;
+    border-radius: 3px;
+    color: #f5f5f5;
+    /* making the text inside the legend lighter for contrast */
+    box-shadow: 0 1px 5px #444;
+}
+
+/* Styles for filter and layers icons */
+.leaflet-control-custom .md.hydrated {
+    font-size: 26px;
+    padding: 6px;
+    color: #000;
+    /* black color for icons */
+}
+
+/* Hover effect for the icons */
+.leaflet-control-custom a:hover .md.hydrated {
+    color: #666;
+    /* lighter color on hover */
+}
+
+/* Styling for the filter content */
+.filter-content,
+.layers-content {
+    padding: 10px;
+    background-color: #444;
+    /* similar dark background */
+    border: 1px solid #444;
+    border-radius: 3px;
+    color: #f5f5f5;
+    /* making text lighter for contrast */
+    box-shadow: 0 1px 5px #444;
+}
+
+/* Styles for buttons inside filter and layers content */
+.filter-content button,
+.layers-content button {
+    background-color: #555;
+    color: #f5f5f5;
+    border: 1px solid #444;
+    border-radius: 2px;
+    margin: 2px 0;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    /* smooth transition for hover effect */
+    font-size: 1rem !important;
+}
+
+.filter-content button:hover,
+.layers-content button:hover {
+    background-color: #666;
+    /* slightly lighter on hover */
+}
+
+.leaflet-control-custom {
+    background-color: #444;
+}
+
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+    border: none !important;
+}
+
+.leaflet-control-zoom-in {
+    background-color: #fff !important;
+    border: 2px solid #444 !important;
+    color: #000 !important;
+    display: block;
+    padding: 5px 10px !important;
+    /* You can adjust this if needed */
+    margin: 2px !important;
+    border-radius: 5px !important;
+    text-align: center !important;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2) !important;
+    cursor: pointer !important;
+}
+
+.leaflet-control-zoom-in:hover {
+    background-color: #f4f4f4 !important;
+    color: #666 !important;
+}
+
+.leaflet-control-zoom-out {
+    background-color: #fff !important;
+    border: 2px solid #444 !important;
+    color: #000 !important;
+    display: block;
+    padding: 5px 10px !important;
+    /* You can adjust this if needed */
+    margin: 2px !important;
+    border-radius: 5px !important;
+    text-align: center !important;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2) !important;
+    cursor: pointer !important;
+}
+
+.leaflet-control-zoom-out:hover {
+    background-color: #f4f4f4 !important;
+    color: #666 !important;
+}
+
+.leaflet-container {
+    font-family: "Helvetica Neue", Arial, Helvetica, sans-serif !important;
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+}
+
+/* For the 1st icon (Community) */
+.legend-content i:nth-child(1) {
+    border: 2px solid rgba(55, 173, 184, 0.6);
+    /* Example blue color; adjust as needed */
+    display: inline-block;
+    /* To ensure that borders apply correctly */
+    width: 15px;
+    /* Adjust if necessary */
+    height: 15px;
+    /* Adjust if necessary */
+}
+
+/* For the 2nd icon (County) */
+.legend-content i:nth-child(3) {
+    /* Note the '3' here, because <br> tags also count as children */
+    border: 2px solid rgba(243, 222, 44, 0.6);
+    /* Example orange color; adjust as needed */
+    display: inline-block;
+    /* To ensure that borders apply correctly */
+    width: 15px;
+    /* Adjust if necessary */
+    height: 15px;
+    /* Adjust if necessary */
+}
+
+/* For the 3rd icon (Fire Protection District) */
+.legend-content i:nth-child(5) {
+    /* Note the '5' here, because of the <br> tags */
+    border: 2px solid rgba(189, 117, 122, 0.6);
+    /* Example red color; adjust as needed */
+    display: inline-block;
+    /* To ensure that borders apply correctly */
+    width: 15px;
+    /* Adjust if necessary */
+    height: 15px;
+    /* Adjust if necessary */
+}
+
+
+
+
+
+.ui-widget input,
+.ui-widget select,
+.ui-widget textarea {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 1em;
+    width: 20rem !important;
+}
+
+#add-feature-dialog {
+    background-color: #444;
+    border: 1px solid #000000;
+    border-radius: 5px;
+    padding: 20px;
+    box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.2);
+    width: 300px;
+    height: auto;
+    top: 50px;
+    left: 50px;
+}
+
+.ui-dialog {
+    background-color: #444;
+    border: 1px solid #444;
+    border-radius: 3px;
+    box-shadow: 0 1px 5px #444;
+}
+
+.ui-dialog-titlebar {
+    background-color: #555;
+    color: #f5f5f5;
+    border-bottom: 1px solid #444;
+}
+
+.ui-dialog-titlebar .ui-button {
+    background-color: #444;
+    color: #f5f5f5;
+    border: 1px solid #444;
+}
+
+.ui-dialog-titlebar .ui-button:hover {
+    background-color: #666;
+}
+
+.ui-dialog-content {
+    color: #f5f5f5;
+    padding: 15px;
+}
+
+#add-feature-form label {
+    display: block;
+    margin: 10px 0 5px;
+    font-size: 1rem;
+    color: #f5f5f5;
+}
+
+#add-feature-form input[type="text"],
+#add-feature-form select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    background-color: #555;
+    border: 1px solid #444;
+    border-radius: 2px;
+    color: #f5f5f5;
+}
+
+#add-feature-form button,
+#add-feature-form input[type="submit"] {
+    background-color: #555;
+    color: #f5f5f5;
+    border: 1px solid #444;
+    border-radius: 2px;
+    margin: 2px 0;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    font-size: 1rem;
+}
+
+#add-feature-form button:hover,
+#add-feature-form input[type="submit"]:hover {
+    background-color: #666;
+}
+
+#add-feature-form input[type="file"] {
+    margin: 10px 0;
+}
+
+.ui-widget-content,
+.ui-widget-header {
+    background-color: #444 !important;
+    border: 3px solid black !important;
+    color: #f5f5f5 !important;
+}
+
+.ui-widget-header {
+    font-size: 1.2rem !important;
+}
+
+.ui-dialog {
+    width: 26rem !important;
+    border-radius: 10px;
+}
+
+#state::-webkit-scrollbar,
+#add-feature-dialog::-webkit-scrollbar {
+    width: 12px;
+    background-color: #F5F5F5;
+}
+
+#state::-webkit-scrollbar-thumb,
+#add-feature-dialog::-webkit-scrollbar-thumb {
+    background-color: #888;
+    border-radius: 10px;
+}
+
+/* For Firefox - only the #add-feature-dialog is affected, not the <select> */
+#add-feature-dialog {
+    scrollbar-width: thin;
+    scrollbar-color: #888 #F5F5F5;
+}
+
+/* Reducing space between labels and their respective elements */
+#add-feature-form br {
+    line-height: 0.5;
+    display: block;
+    margin-top: 5px;
+    /* Adjust this value based on how much space you want */
+}
+
+/* Handling hidden community label and input */
+#community-label+br,
+#community+br {
+    display: none;
+    /* Hide <br> tags after the hidden community elements */
+}
+
+#community-label.shown+br,
+#community.shown+br {
+    display: block;
+    /* Show them again when community elements are displayed */
+}
+
+/* Styling scrollbars for the boundary-action-pane in Webkit browsers */
+#boundary-action-pane::-webkit-scrollbar {
+    width: 12px;
+    background-color: #F5F5F5;
+}
+
+#boundary-action-pane::-webkit-scrollbar-thumb {
+    background-color: #888;
+    border-radius: 10px;
+}
+
+#boundary-action-pane::-webkit-scrollbar-thumb:hover {
+    background-color: #555;
+}
+
+/* General Styles */
+#boundary-action-pane {
+    padding: 15px;
+    background-color: #444 !important;
+    border: 3px solid black !important;
+    color: #f5f5f5 !important;
+    border-radius: 5px;
+    font-family: Arial, sans-serif;
+}
+
+/* Close Button */
+#boundary-action-pane .close-button {
+    background-color: #444;
+    padding: 5px 8px;
+    border-radius: 50%;
+    float: right;
+    cursor: pointer;
+    color: #f5f5f5
+}
+
+#boundary-action-pane .close-button:hover {
+    background-color: #888;
+    color: #fff;
+}
+
+/* Styling buttons to match the theme */
+#boundary-action-pane button {
+    background-color: #888;
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 16px;
+    width: 100%;
+    /* to make the buttons span the full width of the container */
+}
+
+#boundary-action-pane button:hover {
+    background-color: #555;
+}
+
+/* Base styling for all draw controls */
+.leaflet-draw.leaflet-control .leaflet-draw-toolbar a {
+    background-color: #fff !important;
+    border: 2px solid #444 !important;
+    color: #000 !important;
+    display: block;
+    padding: none !important;
+    /* Adjusted padding */
+    margin: 2px !important;
+    border-radius: 5px !important;
+    text-align: center !important;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2) !important;
+    cursor: pointer !important;
+}
+
+/* Hover effect for draw controls */
+.leaflet-draw.leaflet-control .leaflet-draw-toolbar a:hover {
+    background-color: #f4f4f4 !important;
+    color: #666 !important;
+}
+
+/* Disable state styling */
+.leaflet-disabled {
+    background-color: #555 !important;
+    cursor: not-allowed !important;
+}
+
+.layers-content button {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    padding: 5px !important;
+    margin: 2px 0 !important;
+    text-align: left !important;
+}
+
+.layers-content img {
+    height: 150px !important;
+    /* Adjust height as needed */
+    width: 230px !important;
+    margin-left: 5px !important;
+}
+
+#loadingScreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('https://insideclimatenews.org/wp-content/uploads/2023/03/wildfire_thibaud-mortiz-afp-getty-scaled.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#loadingScreen>div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background-color: #444;
+    border: 3px black solid;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.2);
+}
+
+.spinner {
+    border: 8px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    border-top: 8px solid #f5f5f5;
+    /* Changed the color to match the text color */
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 10px;
+}
+
+#loadingScreen p {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 0;
+    color: #f5f5f5;
+    /* Adjusted to match the scheme */
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
