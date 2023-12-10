@@ -66,7 +66,11 @@ const stateFolderMap = {
 };
 
 const storage = multer.memoryStorage(); // Stores the file as a buffer in memory
-const upload = multer({ storage: storage });
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 50 * 1024 * 1024 } // 50MB
+});
+
 
 function getFolderIdForState(state) {
     return stateFolderMap[state];
@@ -115,7 +119,7 @@ async function convertToPDF(buffer, mimetype) {
     });
 }
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 app.use(express.static('public'));
 
 const connectionString = process.env.DATABASE_URL;
@@ -143,7 +147,7 @@ const lambda = new AWS.Lambda();
 
 app.get('/api/data', async (req, res) => {
     try {
-        const { rows } = await pool.query('SELECT *, ST_AsGeoJSON(wkb_geometry) as geom FROM cwpp_official LIMIT 100');
+        const { rows } = await pool.query('SELECT *, ST_AsGeoJSON(wkb_geometry) as geom FROM cwpp_official');
         res.send(rows.map(row => {
             let properties = { ...row };
             delete properties.wkb_geometry;

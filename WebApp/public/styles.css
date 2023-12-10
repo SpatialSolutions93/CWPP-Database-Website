@@ -14,7 +14,7 @@ body {
 }
 
 #title {
-    background-color: #81b48c;
+    background-color: #979797;
     padding: 0px;
     align-items: center;
     justify-content: center;
@@ -40,14 +40,12 @@ body {
 
 #titleText {
     font-family: "Arial", sans-serif;
-    font-weight: 700;
-    font-size: 40px;
+    font-weight: 600;
     color: #000000;
 }
 
 @media (min-width: 1px) {
     .center {
-        font-size: 1.2rem;
         visibility: hidden;
     }
 }
@@ -55,27 +53,27 @@ body {
 @media (min-width: 576px) {
     .center {
         font-size: 1rem;
-        visibility: hidden;
+        visibility: visible;
     }
 }
 
 @media (min-width: 768px) {
     .center {
         font-size: 1.3rem;
-        visibility: hidden;
+        visibility: visible;
     }
 }
 
 @media (min-width: 992px) {
     .center {
-        font-size: 1.875rem;
+        font-size: 1.5rem;
         visibility: visible;
     }
 }
 
 @media (min-width: 1200px) {
     .center {
-        font-size: 2rem;
+        font-size: 1.8rem;
         visibility: visible;
     }
 }
@@ -199,6 +197,10 @@ body {
     position: absolute;
     top: 10px;
     left: 10px;
+}
+
+.leaflet-bar.leaflet-control.leaflet-control-custom {
+    left: 3% !important;
 }
 
 .leaflet-control-custom {
@@ -381,11 +383,51 @@ body {
     width: 15px;
     height: 15px;
     margin-right: 5px;
-    border: 1px solid #aaa;
+    border: 2px solid #444;
+    vertical-align: sub;
     /* a bit lighter to stand out against the darker background */
 }
 
 .legend-content {
+    padding: 10px;
+    background-color: #444;
+    border: 1px solid #444;
+    border-radius: 3px;
+    color: #f5f5f5;
+    /* making the text inside the legend lighter for contrast */
+    box-shadow: 0 1px 5px #444;
+    max-height: 130px;
+    overflow: auto;
+}
+
+/* Styling the scrollbar for Webkit browsers (Chrome, Safari, newer versions of Opera) */
+.legend-content::-webkit-scrollbar {
+    width: 12px;
+    background-color: #F5F5F5;
+}
+
+.legend-content::-webkit-scrollbar-thumb {
+    background-color: #888;
+    border-radius: 10px;
+}
+
+/* Styling for Firefox */
+.legend-content {
+    scrollbar-width: thin;
+    scrollbar-color: #888 #F5F5F5;
+}
+
+
+.legend-header {
+    font-weight: bold;
+    font-size: 1.1em;
+    /* Adjust the size as needed */
+    margin-top: 10px;
+    /* Optional: Adds some spacing above the header */
+}
+
+
+.layer-list {
     padding: 10px;
     background-color: #444;
     border: 1px solid #444;
@@ -443,6 +485,28 @@ body {
     /* slightly lighter on hover */
 }
 
+.filter-content {
+    height: 200px;
+    overflow: auto;
+}
+
+/* Styling the scrollbar for Webkit browsers (Chrome, Safari, newer versions of Opera) */
+.filter-content::-webkit-scrollbar {
+    width: 12px;
+    background-color: #F5F5F5;
+}
+
+.filter-content::-webkit-scrollbar-thumb {
+    background-color: #888;
+    border-radius: 10px;
+}
+
+/* Styling for Firefox */
+.filter-content {
+    scrollbar-width: thin;
+    scrollbar-color: #888 #F5F5F5;
+}
+
 .leaflet-control-custom {
     background-color: #444;
 }
@@ -496,9 +560,14 @@ body {
     line-height: 1.5 !important;
 }
 
+/* Style for custom icons */
+.leaflet-marker-icon.custom-icon {
+    border: none !important;
+    /* Remove the border */
+}
+
 /* For the 1st icon (Community) */
 .legend-content i:nth-child(1) {
-    border: 2px solid rgba(55, 173, 184, 0.6);
     /* Example blue color; adjust as needed */
     display: inline-block;
     /* To ensure that borders apply correctly */
@@ -510,8 +579,6 @@ body {
 
 /* For the 2nd icon (County) */
 .legend-content i:nth-child(3) {
-    /* Note the '3' here, because <br> tags also count as children */
-    border: 2px solid rgba(243, 222, 44, 0.6);
     /* Example orange color; adjust as needed */
     display: inline-block;
     /* To ensure that borders apply correctly */
@@ -523,8 +590,6 @@ body {
 
 /* For the 3rd icon (Fire Protection District) */
 .legend-content i:nth-child(5) {
-    /* Note the '5' here, because of the <br> tags */
-    border: 2px solid rgba(189, 117, 122, 0.6);
     /* Example red color; adjust as needed */
     display: inline-block;
     /* To ensure that borders apply correctly */
@@ -533,10 +598,6 @@ body {
     height: 15px;
     /* Adjust if necessary */
 }
-
-
-
-
 
 .ui-widget input,
 .ui-widget select,
@@ -786,6 +847,29 @@ body {
     margin-left: 5px !important;
 }
 
+.layers-content {
+    height: 220px;
+    overflow: auto;
+}
+
+/* Styling the scrollbar for Webkit browsers (Chrome, Safari, newer versions of Opera) */
+.layers-content::-webkit-scrollbar {
+    width: 12px;
+    background-color: #F5F5F5;
+}
+
+.layers-content::-webkit-scrollbar-thumb {
+    background-color: #888;
+    border-radius: 10px;
+}
+
+/* Styling for Firefox */
+.layers-content {
+    scrollbar-width: thin;
+    scrollbar-color: #888 #F5F5F5;
+}
+
+
 #loadingScreen {
     position: fixed;
     top: 0;
@@ -842,4 +926,14 @@ body {
     100% {
         transform: rotate(360deg);
     }
+}
+
+.custom-tooltip {
+    position: absolute;
+    background-color: black;
+    color: white;
+    padding: 5px;
+    border-radius: 5px;
+    font-size: 12px;
+    z-index: 1000;
 }

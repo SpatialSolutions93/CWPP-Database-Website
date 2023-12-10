@@ -421,12 +421,33 @@ $(document).ready(function () {
 
             var link = L.DomUtil.create('a', '', container);
             link.href = '#';
-            link.title = 'Add Feature';
+            link.title = 'Add CWPP';
 
             var icon = L.DomUtil.create('ion-icon', '', link);
             icon.setAttribute('name', 'create-outline');
             icon.style.fontSize = '26px';
             icon.style.padding = '6px';
+            icon.removeAttribute('title');  // Remove any default title
+            icon.title = 'Add CWPP';
+
+            // Function to modify the shadow DOM
+            var modifyShadowDOM = function () {
+                var shadowRoot = icon.shadowRoot;
+                if (shadowRoot) {
+                    var svgTitle = shadowRoot.querySelector('title');
+                    if (svgTitle) {
+                        svgTitle.textContent = 'Add CWPP';
+                        console.log("SVG title changed to:", svgTitle.textContent); // Check the title after changing
+                    } else {
+                        setTimeout(modifyShadowDOM, 50); // Retry after 50ms
+                    }
+                } else {
+                    setTimeout(modifyShadowDOM, 50); // Retry after 50ms
+                }
+            };
+
+            // Start polling
+            modifyShadowDOM();
 
             link.onclick = function (e) {
                 console.log("Add Feature button clicked!");
@@ -777,12 +798,14 @@ $(document).ready(function () {
                     var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
                     var link = L.DomUtil.create('a', '', container);
                     link.href = '#';
-                    link.title = 'Switch Layer';
+                    link.title = 'Basemaps';
 
                     var icon = L.DomUtil.create('ion-icon', '', link);
                     icon.setAttribute('name', 'grid-outline');
                     icon.style.fontSize = '26px';
                     icon.style.padding = '6px';
+                    icon.removeAttribute('title');  // Remove any default title
+                    icon.title = 'Basemaps';
 
                     var layersDiv = L.DomUtil.create('div', 'layers-content', container);
                     layersDiv.style.display = 'none';
@@ -807,6 +830,24 @@ $(document).ready(function () {
                     createLayerButton('Satellite', satellite, 'https://miro.medium.com/v2/resize:fit:900/0*si0GnRAqoAwGL5GD.jpg');
                     createLayerButton('Light Gray', lightGray, 'https://miro.medium.com/v2/resize:fit:1024/0*QqAUvTurSNIloa1a.jpg');
 
+                    // Function to modify the shadow DOM
+                    var modifyShadowDOM = function () {
+                        var shadowRoot = icon.shadowRoot;
+                        if (shadowRoot) {
+                            var svgTitle = shadowRoot.querySelector('title');
+                            if (svgTitle) {
+                                svgTitle.textContent = 'Basemaps';
+                                console.log("SVG title changed to:", svgTitle.textContent); // Check the title after changing
+                            } else {
+                                setTimeout(modifyShadowDOM, 50); // Retry after 50ms
+                            }
+                        } else {
+                            setTimeout(modifyShadowDOM, 50); // Retry after 50ms
+                        }
+                    };
+
+                    // Start polling
+                    modifyShadowDOM();
 
                     link.onclick = function () {
                         layersDiv.style.display = (layersDiv.style.display === 'none' ? 'block' : 'none');
@@ -818,6 +859,11 @@ $(document).ready(function () {
 
             map.addControl(new LayerSwitcherControl());
 
+            // Using jQuery to attach the event listener
+            $('.layers-content').on('mousewheel', function (event) {
+                event.stopPropagation(); // Stop event from propagating to the map
+            });
+
             map.addControl(new HelpControl());
 
         })
@@ -825,83 +871,92 @@ $(document).ready(function () {
             console.log(error);
         });
 
-    axios.get('/api/data').then(response => {
-        geoJSONLayer = L.geoJSON(response.data, {
-            onEachFeature: onEachFeature,
-            style: function (feature) {
-                return {
-                    color: getColor(feature.properties.jurisdiction),
-                    fillOpacity: 1
-                };
+    function initializeMapWithData() {
+        axios.get('/api/data').then(response => {
+            allFeatures = response.data;
+            geoJSONLayer = L.geoJSON(response.data, {
+                onEachFeature: onEachFeature,
+                style: function (feature) {
+                    return {
+                        color: getColor(feature.properties.jurisdiction),
+                        fillOpacity: 1
+                    };
+                }
+            }).addTo(map);
+
+            if (geoJSONLayer.getBounds().isValid()) {
+                map.fitBounds(geoJSONLayer.getBounds());
             }
-        }).addTo(map);
-        allFeatures = response.data;
-        $("#loadingScreen").hide();
-    });
 
-
-    function getColor(d) {
-        return d === 'County' ? 'rgba(243,222,44, 0.25)' :
-            d === 'Fire Protection District' ? 'rgba(189, 117, 122, 0.25)' :
-                d === 'Community' ? 'rgba(55, 173, 184, 0.25)' :
-                    'rgba(255, 237, 160, 0.4)';
+            setTimeout(function () {
+                $("#loadingScreen").hide();
+            }, 1000); // 1000 milliseconds = 1 second
+        });
     }
 
-    // UPDATE UPDATE
+    initializeMapWithData();
 
-    /* // Add a hosted feature layer to the map
+    // Add a hosted feature layer to the map
     var currentIncidents = L.esri.featureLayer({
-        url: 'https://services9.arcgis.com/RHVPKKiFTONKtxq3/ArcGIS/rest/services/USA_Wildfires_v1/FeatureServer/0'
-    })
+        url: 'https://services9.arcgis.com/RHVPKKiFTONKtxq3/ArcGIS/rest/services/USA_Wildfires_v1/FeatureServer/0',
+        pointToLayer: function (feature, latlng) {
+            var iconUrl;
+            var iconSize = [30, 30]; // Set icon size
 
-    // Add a hosted feature layer to the map
+            // Determine which icon to use
+            if (feature.properties.IncidentTypeCategory === 'RX') {
+                iconUrl = 'data:image/png;base64,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'; // Replace with your base64 string
+            } else if (feature.properties.IncidentTypeCategory === 'CX') {
+                iconUrl = 'data:image/png;base64,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'; // Replace with your base64 string
+            } else if (feature.properties.FireDiscoveryAge === 0) {
+                iconUrl = 'data:image/png;base64,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'; // Replace with your base64 string
+            } else {
+                return; // Default Icon URL
+            }
+
+            var icon = L.icon({
+                iconUrl: iconUrl,
+                iconSize: iconSize,
+                iconAnchor: [15, 15], // Center the icon
+                popupAnchor: [0, -15] // Adjust the popup anchor
+            });
+
+            return L.marker(latlng, { icon: icon });
+        }
+    });
+
+    // Add a hosted feature layer to the map with custom styling based on 'FeatureCategory'
     var currentBoundaries = L.esri.featureLayer({
-        url: 'https://services9.arcgis.com/RHVPKKiFTONKtxq3/ArcGIS/rest/services/USA_Wildfires_v1/FeatureServer/1'
-    })
-
-    // Add a hosted feature layer to the map
-    var wildHaz0 = L.esri.featureLayer({
-        url: 'https://services.arcgis.com/jIL9msH9OI208GCb/ArcGIS/rest/services/USA_Wildfire_Hazard_Potential/FeatureServer/0'
-    })
-
-    // Add a hosted feature layer to the map
-    var wildHaz1 = L.esri.featureLayer({
-        url: 'https://services.arcgis.com/jIL9msH9OI208GCb/ArcGIS/rest/services/USA_Wildfire_Hazard_Potential/FeatureServer/1'
-    })
-
-    // Add a hosted feature layer to the map
-    var wildHaz2 = L.esri.featureLayer({
-        url: 'https://services.arcgis.com/jIL9msH9OI208GCb/ArcGIS/rest/services/USA_Wildfire_Hazard_Potential/FeatureServer/2'
-    })
-
-    // Add a hosted feature layer to the map
-    var wildHaz3 = L.esri.featureLayer({
-        url: 'https://services.arcgis.com/jIL9msH9OI208GCb/ArcGIS/rest/services/USA_Wildfire_Hazard_Potential/FeatureServer/3'
-    })
-
-    // Add a hosted feature layer to the map
-    var wildHaz4 = L.esri.featureLayer({
-        url: 'https://services.arcgis.com/jIL9msH9OI208GCb/ArcGIS/rest/services/USA_Wildfire_Hazard_Potential/FeatureServer/4'
-    })
-
-    // Add a hosted feature layer to the map
-    var wildHaz5 = L.esri.featureLayer({
-        url: 'https://services.arcgis.com/jIL9msH9OI208GCb/ArcGIS/rest/services/USA_Wildfire_Hazard_Potential/FeatureServer/5'
-    })
-
-    // Add a hosted feature layer to the map
-    var wildHaz6 = L.esri.featureLayer({
-        url: 'https://services.arcgis.com/jIL9msH9OI208GCb/ArcGIS/rest/services/USA_Wildfire_Hazard_Potential/FeatureServer/6'
-    })
-
-    // Add a hosted feature layer to the map
-    var wind0 = L.esri.featureLayer({
-        url: 'https://services9.arcgis.com/RHVPKKiFTONKtxq3/ArcGIS/rest/services/NOAA_METAR_current_wind_speed_direction_v1/FeatureServer/0'
-    })
-
-    // Add a hosted feature layer to the map
-    var wind1 = L.esri.featureLayer({
-        url: 'https://services9.arcgis.com/RHVPKKiFTONKtxq3/ArcGIS/rest/services/NOAA_METAR_current_wind_speed_direction_v1/FeatureServer/1'
+        url: 'https://services9.arcgis.com/RHVPKKiFTONKtxq3/ArcGIS/rest/services/USA_Wildfires_v1/FeatureServer/1',
+        style: function (feature) {
+            // Check the 'FeatureCategory' field to determine the style
+            if (feature.properties.FeatureCategory === 'Wildfire Daily Fire Perimeter') {
+                return {
+                    color: '#e82020', // Outline color
+                    opacity: 1,       // Outline opacity
+                    weight: 1,        // Outline thickness
+                    fillColor: '#e82020', // Fill color
+                    fillOpacity: 0.7  // 70% fill transparency
+                };
+            } else if (feature.properties.FeatureCategory === 'Prescribed Fire') {
+                return {
+                    color: '#e82020', // Outline color
+                    opacity: 1,       // Outline opacity
+                    weight: 1,        // Outline thickness
+                    fillColor: '#e82020', // Fill color
+                    fillOpacity: 0.7  // 70% fill transparency
+                };
+            } else {
+                // Default style for other categories
+                return {
+                    color: '#000',    // Default outline color
+                    opacity: 1,       // Default outline opacity
+                    weight: 1,        // Default outline thickness
+                    fillColor: '#000', // Default fill color
+                    fillOpacity: 0.7  // Default fill transparency
+                };
+            }
+        }
     })
 
     var LayerControl = L.Control.extend({
@@ -914,12 +969,14 @@ $(document).ready(function () {
 
             var link = L.DomUtil.create('a', '', container);
             link.href = '#';
-            link.title = 'Layers';
+            link.title = 'Fire Layers';
 
             var icon = L.DomUtil.create('ion-icon', '', link);
             icon.setAttribute('name', 'layers-outline');
             icon.style.fontSize = '26px';
             icon.style.padding = '6px';
+            icon.removeAttribute('title');  // Remove any default title
+            icon.title = 'Fire Layers';
 
             // The actual layer list, initially hidden
             var layerList = L.DomUtil.create('div', 'layer-list', container);
@@ -928,34 +985,67 @@ $(document).ready(function () {
             // Add layers here. This is just an example.
             var layers = [
                 { name: 'Current Incidents', layer: currentIncidents },
-                { name: 'Current Incident Boundaries', layer: currentBoundaries },
-                { name: 'Wildfire Hazard Potential1', layer: wildHaz0 },
-                { name: 'Wildfire Hazard Potential2', layer: wildHaz1 },
-                { name: 'Wildfire Hazard Potential3', layer: wildHaz2 },
-                { name: 'Wildfire Hazard Potential4', layer: wildHaz3 },
-                { name: 'Wildfire Hazard Potential5', layer: wildHaz4 },
-                { name: 'Wildfire Hazard Potential6', layer: wildHaz5 },
-                { name: 'Wildfire Hazard Potential7', layer: wildHaz6 },
-                { name: 'Wind Speed and Direction1', layer: wind0 },
-                { name: 'Wind Speed and Direction', layer: wind1 }
+                { name: 'Current Incident Boundaries', layer: currentBoundaries }
             ];
 
+            // Inside your LayerControl's onAdd function
             layers.forEach(function (item) {
                 var layerDiv = L.DomUtil.create('div', '', layerList);
                 var checkbox = L.DomUtil.create('input', '', layerDiv);
                 checkbox.type = 'checkbox';
                 checkbox.checked = false;
+                // When adding/removing layers from the map
                 checkbox.onchange = function () {
                     if (this.checked) {
                         map.addLayer(item.layer);
+                        if (item.name === 'Current Incident Boundaries') {
+                            collapsibleLegendControl.updateLegend('currentBoundaries', 'Wildfire Daily Fire Perimeter', true);
+                            collapsibleLegendControl.updateLegend('currentBoundaries', 'Prescribed Fire', true);
+                        } else if (item.name === 'Current Incidents') {
+                            // Add legend items for the 'currentIncidents' layer
+                            collapsibleLegendControl.updateLegend('currentIncidents', 'Prescribed Fire', true);
+                            collapsibleLegendControl.updateLegend('currentIncidents', 'Incident Complex', true);
+                            collapsibleLegendControl.updateLegend('currentIncidents', 'New (Past 24-hour)', true);
+                        }
                     } else {
                         map.removeLayer(item.layer);
+                        if (item.name === 'Current Incident Boundaries') {
+                            collapsibleLegendControl.updateLegend('currentBoundaries', 'Wildfire Daily Fire Perimeter', false);
+                            collapsibleLegendControl.updateLegend('currentBoundaries', 'Prescribed Fire', false);
+                        } else if (item.name === 'Current Incidents') {
+                            // Remove legend items for the 'currentIncidents' layer
+                            collapsibleLegendControl.updateLegend('currentIncidents', 'Prescribed Fire', false);
+                            collapsibleLegendControl.updateLegend('currentIncidents', 'Incident Complex', false);
+                            collapsibleLegendControl.updateLegend('currentIncidents', 'New (Past 24-hour)', false);
+                        }
                     }
                 };
+
+
                 var label = L.DomUtil.create('label', '', layerDiv);
                 label.innerHTML = item.name;
                 label.insertBefore(checkbox, label.firstChild);
             });
+
+
+            // Function to modify the shadow DOM
+            var modifyShadowDOM = function () {
+                var shadowRoot = icon.shadowRoot;
+                if (shadowRoot) {
+                    var svgTitle = shadowRoot.querySelector('title');
+                    if (svgTitle) {
+                        svgTitle.textContent = 'Fire Layers';
+                        console.log("SVG title changed to:", svgTitle.textContent); // Check the title after changing
+                    } else {
+                        setTimeout(modifyShadowDOM, 50); // Retry after 50ms
+                    }
+                } else {
+                    setTimeout(modifyShadowDOM, 50); // Retry after 50ms
+                }
+            };
+
+            // Start polling
+            modifyShadowDOM();
 
             link.onclick = function (e) {
                 L.DomEvent.stopPropagation(e);
@@ -969,49 +1059,238 @@ $(document).ready(function () {
         }
     });
 
-    map.addControl(new LayerControl()); */
+    map.addControl(new LayerControl());
 
     var CollapsibleLegendControl = L.Control.extend({
         options: {
-            position: 'topright'
+            position: 'topleft'
         },
 
         onAdd: function (map) {
             var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+            var self = this;
 
             var link = L.DomUtil.create('a', '', container);
             link.href = '#';
             link.title = 'Legend';
 
             var icon = L.DomUtil.create('ion-icon', '', link);
-            icon.setAttribute('name', 'book-outline');  // Change the icon to something that signifies a legend. For this example, I used 'book-outline'
+            icon.setAttribute('name', 'book-outline');
             icon.style.fontSize = '26px';
             icon.style.padding = '6px';
+            icon.removeAttribute('title');
+            icon.title = 'Legend';
 
-            var legendDiv = L.DomUtil.create('div', 'legend-content', container);
-            legendDiv.style.display = 'none';
+            // Create legendDiv as a property of the control
+            this.legendDiv = L.DomUtil.create('div', 'legend-content', container);
+            this.legendDiv.style.display = 'none';
 
-            // Legend content
+            // Create and add the static title for CWPPs at the top of the legend
+            var cwppTitle = document.createElement('div');
+            cwppTitle.className = 'legend-header';
+            cwppTitle.innerText = 'CWPPs by Jurisdiction Level';
+            this.legendDiv.appendChild(cwppTitle);  // Append the title at the top of the legend
+
             var grades = ['Community', 'County', 'Fire Protection District'];
             for (var i = 0; i < grades.length; i++) {
-                legendDiv.innerHTML +=
-                    '<i style="background:' + getColor(grades[i]) + '"></i> ' +
+                // Define the border color based on the category
+                var borderColor = getCWPPBorderColor(grades[i]);
+
+                // Add the legend patch with the background color and border
+                this.legendDiv.innerHTML +=
+                    '<i style="background:' + getColor(grades[i]) + '; border: 2px solid ' + borderColor + ';"></i> ' +
                     grades[i] + '<br>';
             }
+
+            // Function to modify the shadow DOM
+            var modifyShadowDOM = function () {
+                var shadowRoot = icon.shadowRoot;
+                if (shadowRoot) {
+                    var svgTitle = shadowRoot.querySelector('title');
+                    if (svgTitle) {
+                        svgTitle.textContent = 'Legend';
+                        console.log("SVG title changed to:", svgTitle.textContent); // Check the title after changing
+                    } else {
+                        setTimeout(modifyShadowDOM, 50); // Retry after 50ms
+                    }
+                } else {
+                    setTimeout(modifyShadowDOM, 50); // Retry after 50ms
+                }
+            };
+
+            // Start polling
+            modifyShadowDOM();
 
             link.onclick = function (e) {
                 L.DomEvent.stopPropagation(e);
                 L.DomEvent.preventDefault(e);
-                legendDiv.style.display = (legendDiv.style.display === 'none' ? 'block' : 'none');
-            }
+                self.legendDiv.style.display = (self.legendDiv.style.display === 'none' ? 'block' : 'none'); // Use 'self' to refer to the control instance
+            };
 
             setZIndexWithImportant($(container));
 
             return container;
-        }
+        },
+
+        updateLegend: function (layerName, category, add) {
+            var legendDiv = this.legendDiv;
+            var legendItemId = layerName + "-" + category.replace(/\s+/g, '-').toLowerCase();
+            var legendItem = document.getElementById(legendItemId);
+
+            if (add && !legendItem) {
+                var newLegendItem = document.createElement('div');
+                newLegendItem.id = legendItemId;
+                newLegendItem.className = 'legend-item ' + layerName + '-item';
+
+                if (layerName === 'currentIncidents') {
+                    var iconUrl = getIconUrl(category); // Function to get icon URL
+                    newLegendItem.innerHTML = '<i style="background-image: url(' + iconUrl + '); background-size: cover;"></i> ' + category;
+                } else if (layerName === 'currentBoundaries') {
+                    var fillColor = getFillColor(category);
+                    var borderColor = getBorderColor(category);
+                    newLegendItem.innerHTML = '<i style="background:' + fillColor + '; border: 2px solid ' + borderColor + ';"></i> ' + category;
+                }
+                addLegendHeader(this.legendDiv, layerName, this.getHeaderText(layerName), true);
+                insertLegendItem(this.legendDiv, newLegendItem, layerName);
+
+            } else if (!add && legendItem) {
+                legendItem.remove();
+                // Check if there are any items left for this category
+                var remainingItems = this.legendDiv.querySelectorAll('.' + layerName + '-item');
+                if (remainingItems.length === 0) {
+                    addLegendHeader(this.legendDiv, layerName, this.getHeaderText(layerName), false);
+                }
+            }
+        },
+
+        getHeaderText: function (layerName) {
+            switch (layerName) {
+                case 'currentIncidents':
+                    return 'Current Incidents';
+                case 'currentBoundaries':
+                    return 'Current Incident Boundaries';
+                case 'cwpp':
+                    return 'CWPPs';
+                default:
+                    return '';
+            }
+        },
+
     });
 
-    map.addControl(new CollapsibleLegendControl());
+    function addLegendHeader(legendDiv, category, headerText, shouldAdd) {
+        var headerId = category + '-header';
+        var header = document.getElementById(headerId);
+
+        if (shouldAdd && !header) {
+            header = document.createElement('div');
+            header.id = headerId;
+            header.className = 'legend-header';
+            header.innerText = headerText;
+
+            // Insert the header at the correct position based on the category order
+            var nextHeader = getNextHeader(legendDiv, category);
+            if (nextHeader) {
+                legendDiv.insertBefore(header, nextHeader);
+            } else {
+                legendDiv.appendChild(header);
+            }
+        } else if (!shouldAdd && header) {
+            header.remove();
+        }
+    }
+
+    function insertLegendItem(legendDiv, newLegendItem, layerName) {
+        // Find the header for this layer
+        var header = legendDiv.querySelector('#' + layerName + '-header');
+
+        // If the header isn't found, create it and insert it into the correct position.
+        if (!header) {
+            addLegendHeader(legendDiv, layerName, getHeaderText(layerName), true);
+            header = legendDiv.querySelector('#' + layerName + '-header');
+        }
+
+        // If the header is found, insert the new item directly after the header.
+        if (header) {
+            // Insert the new item after the header
+            legendDiv.insertBefore(newLegendItem, header.nextSibling);
+        }
+    }
+
+    // Function to get the next header based on the current category
+    function getNextHeader(legendDiv, currentCategory) {
+        var order = ['cwpp', 'currentIncidents', 'currentBoundaries'];
+        var currentIndex = order.indexOf(currentCategory);
+        for (var i = currentIndex + 1; i < order.length; i++) {
+            var nextHeader = legendDiv.querySelector('#' + order[i] + '-header');
+            if (nextHeader) {
+                return nextHeader;
+            }
+        }
+        return null; // This means it's the last category
+    }
+
+    // Instantiate and add the legend control to the map
+    var collapsibleLegendControl = new CollapsibleLegendControl();
+    map.addControl(collapsibleLegendControl);
+
+    // Using jQuery to attach the event listener
+    $('.legend-content').on('mousewheel', function (event) {
+        event.stopPropagation(); // Stop event from propagating to the map
+    });
+
+    function getIconUrl(category) {
+        switch (category) {
+            case 'Prescribed Fire':
+                return 'data:image/png;base64,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'; // Replace [BASE64_STRING_FOR_PRESCRIBED_FIRE] with the actual string
+            case 'Incident Complex':
+                return 'data:image/png;base64,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'; // Replace [BASE64_STRING_FOR_INCIDENT_COMPLEX] with the actual string
+            case 'New (Past 24-hour)':
+                return 'data:image/png;base64,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'; // Replace [BASE64_STRING_FOR_NEW_FIRE] with the actual string
+            default:
+                return '';
+        }
+    }
+
+
+    function getColor(d) {
+        return d === 'County' ? 'rgba(243,222,44, 0.25)' :
+            d === 'Fire Protection District' ? 'rgba(189, 117, 122, 0.25)' :
+                d === 'Community' ? 'rgba(55, 173, 184, 0.25)' :
+                    'rgba(255, 237, 160, 0.4)';
+    }
+
+
+    function getCWPPBorderColor(d) {
+        return d === 'County' ? 'rgba(243, 222, 44, 0.6)' :
+            d === 'Fire Protection District' ? 'rgba(189, 117, 122, 0.6)' :
+                d === 'Community' ? 'rgba(55, 173, 184, 0.6)' :
+                    '#000'; // Default border color, if needed
+    }
+
+
+    function getFillColor(category) {
+        switch (category) {
+            case 'Wildfire Daily Fire Perimeter':
+                return 'rgba(232, 32, 32, 0.7)'; // Example color for Wildfire Daily Fire Perimeter
+            case 'Prescribed Fire':
+                return 'rgba(255, 165, 0, 0.7)'; // Example color for Prescribed Fire
+            default:
+                return 'rgba(0, 0, 0, 0.7)';
+        }
+    }
+
+    function getBorderColor(category) {
+        switch (category) {
+            case 'Wildfire Daily Fire Perimeter':
+                return '#e82020'; // Example border color for Wildfire Daily Fire Perimeter
+            case 'Prescribed Fire':
+                return '#FFA500'; // Example border color for Prescribed Fire
+            default:
+                return '#000';
+        }
+    }
+
 
     function applyFilters(selectedState) {
         if (!allFeatures || allFeatures.length === 0) {
@@ -1052,19 +1331,21 @@ $(document).ready(function () {
 
     var CollapsibleFilterControl = L.Control.extend({
         options: {
-            position: 'topright'
+            position: 'topleft'
         },
 
         onAdd: function (map) {
             var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
             var link = L.DomUtil.create('a', '', container);
             link.href = '#';
-            link.title = 'Filter';
+            link.title = 'State Filters';
 
             var icon = L.DomUtil.create('ion-icon', '', link);
             icon.setAttribute('name', 'filter-outline');
             icon.style.fontSize = '26px';
             icon.style.padding = '6px';
+            icon.removeAttribute('title');  // Remove any default title
+            icon.title = 'State Filters';
 
             var filterDiv = L.DomUtil.create('div', 'filter-content', container);
             filterDiv.style.display = 'none';
@@ -1112,6 +1393,25 @@ $(document).ready(function () {
                     console.error("Failed to fetch states:", error);
                 });
 
+            // Function to modify the shadow DOM
+            var modifyShadowDOM = function () {
+                var shadowRoot = icon.shadowRoot;
+                if (shadowRoot) {
+                    var svgTitle = shadowRoot.querySelector('title');
+                    if (svgTitle) {
+                        svgTitle.textContent = 'State Filters';
+                        console.log("SVG title changed to:", svgTitle.textContent); // Check the title after changing
+                    } else {
+                        setTimeout(modifyShadowDOM, 50); // Retry after 50ms
+                    }
+                } else {
+                    setTimeout(modifyShadowDOM, 50); // Retry after 50ms
+                }
+            };
+
+            // Start polling
+            modifyShadowDOM();
+
             link.onclick = function () {
                 filterDiv.style.display = (filterDiv.style.display === 'none' ? 'block' : 'none');
             }
@@ -1124,9 +1424,12 @@ $(document).ready(function () {
 
     map.addControl(new CollapsibleFilterControl());
 
-    // UPDATE UPDATE
+    // Using jQuery to attach the event listener
+    $('.filter-content').on('mousewheel', function (event) {
+        event.stopPropagation(); // Stop event from propagating to the map
+    });
 
-    /* // Global variable declarations for the buttons
+    // Global variable declarations for the buttons
     var tutorialButton;
     var contactButton;
 
@@ -1140,19 +1443,22 @@ $(document).ready(function () {
             var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
             var link = L.DomUtil.create('a', '', container);
             link.href = '#';
-            link.title = 'Help & Tutorial';
+            link.title = 'Tutorial & Contact Us';
 
             var icon = L.DomUtil.create('ion-icon', '', link);
             icon.setAttribute('name', 'help-outline');
             icon.style.fontSize = '26px';
             icon.style.padding = '6px';
+            icon.removeAttribute('title');  // Remove any default title
+            icon.title = 'Tutorial & Contact Us';
+            console.log("Icon:", icon)
 
             var helpDiv = L.DomUtil.create('div', 'help-content', container);
             helpDiv.style.display = 'none';
 
             // Tutorial Button
             tutorialButton = L.DomUtil.create('button', '', helpDiv);
-            tutorialButton.innerHTML = 'Adding a CWPP Tutorial';
+            tutorialButton.innerHTML = 'Tutorial';
 
             // Assign onclick event to tutorialButton here
             tutorialButton.onclick = function () {
@@ -1173,6 +1479,25 @@ $(document).ready(function () {
                 tutorialPane.style.display = 'none'; // close the tutorial pane
                 contactForm.style.zIndex = getNextZIndex(); // bring the contact form to the front
             };
+
+            // Function to modify the shadow DOM
+            var modifyShadowDOM = function () {
+                var shadowRoot = icon.shadowRoot;
+                if (shadowRoot) {
+                    var svgTitle = shadowRoot.querySelector('title');
+                    if (svgTitle) {
+                        svgTitle.textContent = 'Tutorial & Contact Us';
+                        console.log("SVG title changed to:", svgTitle.textContent); // Check the title after changing
+                    } else {
+                        setTimeout(modifyShadowDOM, 50); // Retry after 50ms
+                    }
+                } else {
+                    setTimeout(modifyShadowDOM, 50); // Retry after 50ms
+                }
+            };
+
+            // Start polling
+            modifyShadowDOM();
 
             link.onclick = function () {
                 helpDiv.style.display = (helpDiv.style.display === 'none' ? 'block' : 'none');
@@ -1294,7 +1619,7 @@ $(document).ready(function () {
     };
     contactForm.appendChild(contactCloseButton);
 
-    document.body.appendChild(contactForm); */
+    document.body.appendChild(contactForm);
 
     L.control.scale().addTo(map);
 
