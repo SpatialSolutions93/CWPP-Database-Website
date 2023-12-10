@@ -68,7 +68,7 @@ const stateFolderMap = {
 const storage = multer.memoryStorage(); // Stores the file as a buffer in memory
 const upload = multer({
     storage: storage,
-    limits: { fileSize: 50 * 1024 * 1024 } // 50MB
+    limits: { fileSize: 1000 * 1024 * 1024 } // 50MB
 });
 
 
@@ -119,7 +119,7 @@ async function convertToPDF(buffer, mimetype) {
     });
 }
 
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '1000mb' }));
 app.use(express.static('public'));
 
 const connectionString = process.env.DATABASE_URL;
@@ -168,6 +168,38 @@ app.post('/api/data', upload.single('file'), async (req, res) => {
     // Parse the feature string into a JSON object
     const feature = JSON.parse(req.body.feature);
     const { name, jurisdiction, county, state, year_published, contact_email } = feature.properties;
+
+    // Format the CWPP name by removing spaces
+    const formattedName = name.replace(/\s+/g, '');
+
+    console.log("Formatted name:", formattedName);
+
+    console.log("Jurisdiction:", jurisdiction);
+
+    // Abbreviate the jurisdiction level
+    let jurisdictionAbbreviation = '';
+    switch (jurisdiction) {
+        case 'County':
+            jurisdictionAbbreviation = 'CNTY';
+            break;
+        case 'Fire Protection District':
+            jurisdictionAbbreviation = 'FPRD';
+            break;
+        case 'Community':
+            jurisdictionAbbreviation = 'COMM';
+            break;
+    }
+
+    console.log("Jurisdiction abbreviation:", jurisdictionAbbreviation);
+
+    console.log("State:", state.toUpperCase());
+
+    console.log("Year published:", year_published);
+
+    // Construct the new file name
+    const newFileName = `${state.toUpperCase()}_${formattedName}_${jurisdictionAbbreviation}_${year_published}`;
+    console.log(`Uploading file to Google Drive with name: ${newFileName}`);
+
     const geometry = feature.geometry;
 
     const file = req.file;
@@ -176,6 +208,7 @@ app.post('/api/data', upload.single('file'), async (req, res) => {
     try {
         const pdfBuffer = await convertToPDF(file.buffer, file.mimetype);
 
+        // Use the new file name when creating the file on Google Drive
         const driveResponse = await drive.files.create({
             auth: jwtClient,
             media: {
@@ -183,7 +216,7 @@ app.post('/api/data', upload.single('file'), async (req, res) => {
                 body: require('stream').Readable.from(pdfBuffer)
             },
             requestBody: {
-                name: file.originalname,
+                name: newFileName, // This is where you use the new file name
                 parents: [folderId]
             }
         });
@@ -191,12 +224,24 @@ app.post('/api/data', upload.single('file'), async (req, res) => {
         const link = `<a href='https://drive.google.com/file/d/${driveResponse.data.id}/view?usp=drivesdk' target='_blank'>${county}</a>`;
 
         const query = `
-            INSERT INTO cwpp_unconfirmed (name, jurisdiction, county, state, year_published, wkb_geometry, pdf, contact_email) 
-            VALUES ($1, $2, $3, $4, $5, ST_GeomFromGeoJSON($6), $7, $8)
-            RETURNING uid, contact_email, name;
-        `;
+        INSERT INTO cwpp_unconfirmed 
+            (name, jurisdiction, county, state, year_published, wkb_geometry, pdf, contact_email, boundary_area_sqkm) 
+        VALUES 
+            ($1, $2, $3, $4, $5, ST_GeomFromGeoJSON($6), $7, $8, ST_Area(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($6), 4326), 5070)) / 1000000)
+        RETURNING uid, contact_email, name;
+    `;
 
-        const result = await pool.query(query, [name, jurisdiction, county, state, year_published, JSON.stringify(geometry), link, contact_email]);
+        const result = await pool.query(query, [
+            name,
+            jurisdiction,
+            county,
+            state,
+            year_published,
+            JSON.stringify(geometry),
+            link,
+            contact_email
+        ]);
+
         const uid = result.rows[0].uid;
         const contact_email_use = result.rows[0].contact_email;
         const name_use = result.rows[0].name;

@@ -342,6 +342,8 @@ $(document).ready(function () {
 
         axios.post('/api/data', formData)
             .then(function (response) {
+                $(".leaflet-draw-edit-edit").hide();
+
                 $("#add-feature-dialog").dialog("close");
 
                 // Clear edited geometries and reset map zoom/position
@@ -437,7 +439,7 @@ $(document).ready(function () {
                     var svgTitle = shadowRoot.querySelector('title');
                     if (svgTitle) {
                         svgTitle.textContent = 'Add CWPP';
-                        console.log("SVG title changed to:", svgTitle.textContent); // Check the title after changing
+
                     } else {
                         setTimeout(modifyShadowDOM, 50); // Retry after 50ms
                     }
@@ -663,103 +665,160 @@ $(document).ready(function () {
         $("#add-feature-dialog").dialog("open");
     });
 
+    // Global scope
     var overlappingFeatures = [];
     var currentFeatureIndex = 0;
 
+    // Update the navigateFeature function
     function navigateFeature(step) {
-        currentFeatureIndex += step;
-        if (currentFeatureIndex >= 0 && currentFeatureIndex < overlappingFeatures.length) {
-            // Close the currently opened popup.
-            map.closePopup();
-            // Show the popup for the new current feature.
-            showPopup(currentFeatureIndex);
+        let newIndex = currentFeatureIndex + step;
+        if (newIndex >= 0 && newIndex < overlappingFeatures.length) {
+            currentFeatureIndex = newIndex; // Update the index
+            showPopup(newIndex); // Show the popup for the new index
         }
     }
 
-    function showPopup(index) {
-        let feature = overlappingFeatures[index];
-        let existingPopupContent = feature.getPopup().getContent();
-
-        // Create next/previous buttons
-        let previousButtonHTML = (index > 0) ? '<button id="previous-button" class="navigate-feature-button" data-direction="-1">Previous</button>' : '';
-        let nextButtonHTML = (index < overlappingFeatures.length - 1) ? '<button id="next-button" class="navigate-feature-button" data-direction="1">Next</button>' : '';
-
-        let popupContentHTML = existingPopupContent + previousButtonHTML + nextButtonHTML;
-
-        // Unbind the old popup and bind the new one
-        feature.unbindPopup();
-        feature.bindPopup(popupContentHTML);
-
-        if (highlightedPolygon !== null) {
-            highlightedPolygon.setStyle({
-                fillColor: getColor(highlightedPolygon.feature.properties.jurisdiction),
-                fillOpacity: 1
-            });
-        }
-
-        feature.setStyle({
-            fillColor: '#f00',  // highlight color
-            fillOpacity: 1
-        });
-        highlightedPolygon = feature;
-
-        feature.openPopup();
-
-        // Clear existing click events and listen to new ones on the 'previous' and 'next' buttons
-        $("#previous-button").off("click").on("click", function () {
+    // When a popup opens, attach event listeners to its buttons
+    map.on('popupopen', function (e) {
+        var popupElement = e.popup._contentNode;
+        $(popupElement).find("#previous-button").off("click").on("click", function () {
             navigateFeature(-1);
         });
+        $(popupElement).find("#next-button").off("click").on("click", function () {
+            navigateFeature(1);
+        });
+    });
 
-        $("#next-button").off("click").on("click", function () {
+    map.on('popupclose', function (e) {
+        if (highlightedPolygon) {
+            resetHighlight(highlightedPolygon); // Reset the style of the highlighted polygon
+            highlightedPolygon = null; // Clear the reference to the highlighted polygon
+        }
+    });
+
+
+    // Function to display popup
+    function showPopup(index) {
+        if (index < 0 || index >= overlappingFeatures.length) {
+            console.error("Invalid feature index:", index);
+            return;
+        }
+
+        let feature = overlappingFeatures[index];
+        let popupContentHTML = createPopupContent(feature);
+
+        // Add navigation buttons if necessary
+        popupContentHTML += getNavigationButtonsHTML(index);
+
+        // Bind and open the new popup
+        feature.unbindPopup().bindPopup(popupContentHTML, { closeButton: true }).openPopup();
+
+        highlightFeature(feature);
+
+        // Attach event listeners to the buttons in the popup
+        setTimeout(function () {
+            attachButtonListeners();
+        }, 10); // Delay to ensure the popup is fully rendered
+    }
+
+    function attachButtonListeners() {
+        // Detach any existing listeners to avoid duplicates
+        $("#previous-button").off("click");
+        $("#next-button").off("click");
+
+        // Attach new listeners
+        $("#previous-button").on("click", function () {
+            navigateFeature(-1);
+        });
+        $("#next-button").on("click", function () {
             navigateFeature(1);
         });
     }
 
-    map.on('popupclose', function (e) {
-        currentFeatureIndex = 0;
-        if (highlightedPolygon !== null) {
-            highlightedPolygon.setStyle({
-                fillColor: getColor(highlightedPolygon.feature.properties.jurisdiction),
-                fillOpacity: 1
-            });
-            highlightedPolygon = null;
+    // Create popup content
+    function createPopupContent(feature) {
+        let properties = feature.feature ? feature.feature.properties : feature.properties;
+        let popupContent = '';
+
+        // Define a mapping for the field names
+        const fieldNamesMapping = {
+            'name': 'Name',
+            'pdf': 'PDF',
+            'jurisdiction': 'Jurisdiction',
+            'county': 'County',
+            'state': 'State',
+            'year_published': 'Year Published',
+            'boundary_area_sqkm': 'Boundary Area (sq km)'
+            // 'uid' is not included as we want to exclude it
+        };
+
+        for (let key in properties) {
+            if (properties.hasOwnProperty(key) && properties[key] && key in fieldNamesMapping) {
+                popupContent += `<b>${fieldNamesMapping[key]}:</b> ${properties[key]}<br>`;
+            }
         }
-    });
+        return popupContent;
+    }
+
+    // Function to get navigation buttons HTML
+    function getNavigationButtonsHTML(index) {
+        let buttonsHTML = '';
+        if (index > 0) {
+            buttonsHTML += `<button id="previous-button" class="navigate-feature-button">Previous</button>`;
+        }
+        if (index < overlappingFeatures.length - 1) {
+            buttonsHTML += `<button id="next-button" class="navigate-feature-button">Next</button>`;
+        }
+        return buttonsHTML;
+    }
+
+    function highlightFeature(feature) {
+        if (highlightedPolygon) {
+            resetHighlight(highlightedPolygon);
+        }
+        feature.setStyle({
+            fillColor: '#f00', // highlight color
+            fillOpacity: 1
+        });
+        highlightedPolygon = feature;
+    }
+
+    function resetHighlight(feature) {
+        feature.setStyle({
+            fillColor: getColor(feature.feature.properties.jurisdiction),
+            fillOpacity: 1
+        });
+    }
 
     function onEachFeature(feature, layer) {
-        layer.id = L.Util.stamp(layer);
-        if (feature.properties) {
-            let popupContent = "";
-            for (let key in feature.properties) {
-                if (feature.properties[key] && feature.properties[key].toString().trim() !== "") {
-                    popupContent += `<b>${key}:</b> ${feature.properties[key]}<br>`;
-                }
+        layer.on('click', function (e) {
+            if (isEditMode) {
+                // Edit mode logic
+                return;
             }
-            if (popupContent !== "") {
-                layer.bindPopup(popupContent);
-                layer.on('click', function (e) {
-                    if (isEditMode) {
-                        layer.setStyle({
-                            fillColor: '#0000ff', // Blue color to indicate a feature selected for editing
-                            fillOpacity: 0.6
-                        });
-                        return; // Exit early to avoid executing the popup logic
-                    }
 
-                    overlappingFeatures = [];
-                    currentFeatureIndex = 0;
-                    var clickedPoint = map.mouseEventToLatLng(e.originalEvent);
-                    map.eachLayer(function (otherLayer) {
-                        if (otherLayer instanceof L.Polygon) {
-                            if (otherLayer.getBounds().contains(clickedPoint)) {
-                                overlappingFeatures.push(otherLayer);
-                            }
-                        }
-                    });
-                    showPopup(currentFeatureIndex);
-                });
+            overlappingFeatures = getOverlappingFeaturesAtPoint(e.latlng);
+            // Always start with the first feature in the overlapping features array
+            currentFeatureIndex = 0; // Set to 0 instead of indexOf
+
+            if (overlappingFeatures.length > 1) {
+                // More than one feature overlapping, show navigation
+                showPopup(currentFeatureIndex);
+            } else {
+                // Only one feature, open popup without navigation
+                layer.openPopup();
             }
-        }
+        });
+    }
+
+    function getOverlappingFeaturesAtPoint(latlng) {
+        let features = [];
+        map.eachLayer(function (layer) {
+            if (layer instanceof L.Polygon && layer.getBounds().contains(latlng)) {
+                features.push(layer);
+            }
+        });
+        return features;
     }
 
     var token;
@@ -837,7 +896,7 @@ $(document).ready(function () {
                             var svgTitle = shadowRoot.querySelector('title');
                             if (svgTitle) {
                                 svgTitle.textContent = 'Basemaps';
-                                console.log("SVG title changed to:", svgTitle.textContent); // Check the title after changing
+
                             } else {
                                 setTimeout(modifyShadowDOM, 50); // Retry after 50ms
                             }
@@ -863,6 +922,77 @@ $(document).ready(function () {
             $('.layers-content').on('mousewheel', function (event) {
                 event.stopPropagation(); // Stop event from propagating to the map
             });
+
+            var ResourcesControl = L.Control.extend({
+                options: {
+                    position: 'topright'
+                },
+
+                onAdd: function (map) {
+                    var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+                    var link = L.DomUtil.create('a', '', container);
+                    link.href = '#';
+                    link.title = 'Resources for CWPP Creation';
+
+                    var icon = L.DomUtil.create('ion-icon', '', link);
+                    icon.setAttribute('name', 'documents-outline');
+                    icon.style.fontSize = '26px';
+                    icon.style.padding = '6px';
+                    icon.removeAttribute('title'); // Remove any default title
+                    icon.title = 'Resources for CWPP Creation';
+
+                    var resourcesDiv = L.DomUtil.create('div', 'resources-content', container);
+                    resourcesDiv.style.display = 'none';
+
+                    var resourcesList = [
+                        '<a href="http://www.communitiescommittee.org/pdfs/cwpphandbook.pdf" target="_blank">Preparing a Community Wildfire Protection Plan (Communities Committee)</a>',
+                        '<a href="https://www.usfa.fema.gov/downloads/pdf/publications/creating_a_cwpp.pdf" target="_blank">Creating a Community Wildfire Protection Plan (Federal Emergency Management Agency)</a>',
+                        '<a href="https://www.oregon.gov/ODF/Documents/Fire/CWPPEvalGuide.pdf" target="_blank">Community Wildfire Protection Plan Evaluation Guide (University of Oregon)</a>',
+                        '<a href="https://srcity.org/DocumentCenter/View/24615/COMMUNITY-GUIDE-to-Preparing-and-Implementing-a-Community-Wildfire-Protection-Plan?bidId=" target="_blank">Community Guide to Preparing and Implementing a Community Wildfire Protection Plan (International Fire Chiefs Association)</a>'
+                    ];
+
+                    var ul = L.DomUtil.create('ul', '', resourcesDiv);
+                    // Loop through the resourcesList and create list items with links
+                    resourcesList.forEach(function (resourceHtmlString) {
+                        var li = L.DomUtil.create('li', '', ul);
+                        // Directly set the innerHTML to include the anchor tags with hyperlinks
+                        li.innerHTML = resourceHtmlString;
+                    });
+
+                    // Function to modify the shadow DOM
+                    var modifyShadowDOM = function () {
+                        var shadowRoot = icon.shadowRoot;
+                        if (shadowRoot) {
+                            var svgTitle = shadowRoot.querySelector('title');
+                            if (svgTitle) {
+                                svgTitle.textContent = 'Resources for CWPP Creation';
+
+                            } else {
+                                setTimeout(modifyShadowDOM, 50); // Retry after 50ms
+                            }
+                        } else {
+                            setTimeout(modifyShadowDOM, 50); // Retry after 50ms
+                        }
+                    };
+
+                    // Start polling
+                    modifyShadowDOM();
+
+                    link.onclick = function () {
+                        resourcesDiv.style.display = (resourcesDiv.style.display === 'none' ? 'block' : 'none');
+                    }
+
+                    return container;
+                }
+            });
+
+            map.addControl(new ResourcesControl());
+
+            // Using jQuery to attach the event listener
+            $('.resources-content').on('mousewheel', function (event) {
+                event.stopPropagation(); // Stop event from propagating to the map
+            });
+
 
             map.addControl(new HelpControl());
 
@@ -1035,7 +1165,7 @@ $(document).ready(function () {
                     var svgTitle = shadowRoot.querySelector('title');
                     if (svgTitle) {
                         svgTitle.textContent = 'Fire Layers';
-                        console.log("SVG title changed to:", svgTitle.textContent); // Check the title after changing
+
                     } else {
                         setTimeout(modifyShadowDOM, 50); // Retry after 50ms
                     }
@@ -1109,7 +1239,7 @@ $(document).ready(function () {
                     var svgTitle = shadowRoot.querySelector('title');
                     if (svgTitle) {
                         svgTitle.textContent = 'Legend';
-                        console.log("SVG title changed to:", svgTitle.textContent); // Check the title after changing
+
                     } else {
                         setTimeout(modifyShadowDOM, 50); // Retry after 50ms
                     }
@@ -1400,7 +1530,7 @@ $(document).ready(function () {
                     var svgTitle = shadowRoot.querySelector('title');
                     if (svgTitle) {
                         svgTitle.textContent = 'State Filters';
-                        console.log("SVG title changed to:", svgTitle.textContent); // Check the title after changing
+
                     } else {
                         setTimeout(modifyShadowDOM, 50); // Retry after 50ms
                     }
@@ -1462,11 +1592,10 @@ $(document).ready(function () {
 
             // Assign onclick event to tutorialButton here
             tutorialButton.onclick = function () {
-                currentPage = 1;
                 updateTutorialPane();
-                tutorialPane.style.display = 'block';
-                contactForm.style.display = 'none'; // close the contact form
-                tutorialPane.style.zIndex = getNextZIndex(); // bring the tutorial pane to the front
+                tutorialPane.style.display = 'block'; // Show the tutorial pane
+                contactForm.style.display = 'none'; // Hide the contact form
+                tutorialPane.style.zIndex = getNextZIndex();
             };
 
             // Contact Us Button
@@ -1487,7 +1616,7 @@ $(document).ready(function () {
                     var svgTitle = shadowRoot.querySelector('title');
                     if (svgTitle) {
                         svgTitle.textContent = 'Tutorial & Contact Us';
-                        console.log("SVG title changed to:", svgTitle.textContent); // Check the title after changing
+
                     } else {
                         setTimeout(modifyShadowDOM, 50); // Retry after 50ms
                     }
@@ -1509,53 +1638,87 @@ $(document).ready(function () {
 
     // Tutorial Pane Creation and Logic
     var tutorialPane = L.DomUtil.create('div', 'tutorial-pane', document.body);
-    var currentPage = 1;
+    tutorialPane.style.display = 'none'; // Initially hidden
+    tutorialPane.style.flexDirection = 'column';
+    tutorialPane.style.alignItems = 'flex-start';
+    tutorialPane.style.maxWidth = '350px'; // Set a max width for the pane
 
-    var pages = [
-        "Page 1 content here...",
-        "Page 2 content here...",
-        "Page 3 content here...",
-        "Page 4 content here..."
+    // Define the widgets with their names, icons, and descriptions
+    var widgets = [
+        {
+            name: "Fire Layers",
+            icon: 'layers-outline',
+            description: "Manage the display of various fire-related layers on the map"
+        },
+        {
+            name: "Legend",
+            icon: 'book-outline', // Assuming you have an icon for Legend
+            description: "Show the map legend"
+        },
+        {
+            name: "State Filters",
+            icon: 'filter-outline',
+            description: "Filter CWPPs by state"
+        },
+        {
+            name: "Add CWPP",
+            icon: 'create-outline',
+            description: "Add a new CWPP to the repository, be sure to fill in all fields and edit or create geometry as necessary"
+        },
+        {
+            name: "Basemaps",
+            icon: 'grid-outline',
+            description: "Switch between different basemap styles"
+        },
+        {
+            name: "Resources",
+            icon: 'documents-outline',
+            description: "Access links to resources for CWPP creation"
+        }
+
     ];
 
+    // Function to update the tutorial pane with widget information
     function updateTutorialPane() {
-        tutorialPane.innerHTML = `
-            <div class="page-number">${currentPage}</div>
-            <div class="page-content">${pages[currentPage - 1]}</div>`;
-        const prevButton = document.createElement('button');
-        prevButton.innerText = 'Previous';
-        prevButton.disabled = currentPage === 1;
-        prevButton.addEventListener('click', () => changePage(-1));
+        tutorialPane.innerHTML = ''; // Clear existing content
 
-        const nextButton = document.createElement('button');
-        nextButton.innerText = 'Next';
-        nextButton.disabled = currentPage === 4;
-        nextButton.addEventListener('click', () => changePage(1));
+        // Generate HTML content for each widget
+        widgets.forEach(function (widget) {
+            var widgetContainer = L.DomUtil.create('div', 'widget-container', tutorialPane);
+            widgetContainer.style.display = 'flex';
+            widgetContainer.style.alignItems = 'center';
+            widgetContainer.style.marginBottom = '10px';
 
-        const navigationButtons = document.createElement('div');
-        navigationButtons.className = 'navigation-buttons';
-        navigationButtons.appendChild(prevButton);
-        navigationButtons.appendChild(nextButton);
+            // Create a container for the icon to control its size and centering
+            var iconContainer = L.DomUtil.create('div', 'icon-container', widgetContainer);
+            iconContainer.style.width = '26px';
+            iconContainer.style.height = '26px';
+            iconContainer.style.display = 'flex';
+            iconContainer.style.justifyContent = 'center';
+            iconContainer.style.alignItems = 'center';
+            iconContainer.style.marginRight = '10px';
 
-        tutorialPane.appendChild(navigationButtons);
+            var iconElement = L.DomUtil.create('ion-icon', '', iconContainer);
+            iconElement.setAttribute('name', widget.icon);
+            iconElement.style.fontSize = '26px'; // This controls the scale of the icon
+
+            var widgetName = L.DomUtil.create('div', 'widget-name', widgetContainer);
+            widgetName.innerHTML = `<strong>${widget.name}</strong>`;
+            widgetName.style.marginRight = '10px';
+
+            var widgetDesc = L.DomUtil.create('div', 'widget-description', widgetContainer);
+            widgetDesc.innerHTML = widget.description;
+        });
+
+        // Inside the HelpControl onAdd function
+        var tutorialCloseButton = L.DomUtil.create('button', 'tutorial-close-button', tutorialPane);
+        tutorialCloseButton.innerHTML = '×'; // Using the multiplication symbol to represent 'x'
+        tutorialCloseButton.onclick = function () {
+            tutorialPane.style.display = 'none';
+        };
+
         tutorialPane.appendChild(tutorialCloseButton);
     }
-
-    function changePage(step) {
-        currentPage += step;
-        currentPage = Math.max(1, Math.min(currentPage, 4)); // Ensure the page is between 1 and 4
-        updateTutorialPane();
-    }
-
-    // Add close button to Tutorial Pane:
-    var tutorialCloseButton = document.createElement("span");
-    tutorialCloseButton.innerHTML = "x";
-    tutorialCloseButton.classList.add("close-button");
-    tutorialCloseButton.onclick = function () {
-        tutorialPane.style.display = 'none';
-    };
-
-    document.body.appendChild(tutorialPane);
 
     // Contact Form Creation and Logic
     var contactForm = L.DomUtil.create('div', 'contact-form', document.body);
